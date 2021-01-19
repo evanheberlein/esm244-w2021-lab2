@@ -1,0 +1,50 @@
+---
+title: "ESM 244 Lab wk 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(janitor)
+library(palmerpenguins)
+library(here)
+
+#For PCA
+library(ggfortify)
+
+#For ggplot customization
+library(readxl)
+library(gghighlight)
+library(lubridate)
+library(plotly)
+
+# To make compound figures
+library(patchwork)
+
+```
+
+## Part 1: PCA w/ penguins
+
+```{r}
+penguin_pca <- penguins %>% 
+  dplyr::select(body_mass_g, ends_with("_mm")) %>% 
+  drop_na() %>% 
+  scale() %>%  # scales variables by units so they aren't weighted in PCA
+  prcomp() # runs PCA, df to list
+
+penguin_pca$rotation
+
+# Better alternative to code above, drop only observations missing values for PCA variable
+penguin_complete <- penguins %>% 
+  drop_na(body_mass_g, ends_with("mm"))
+
+autoplot(penguin_pca,
+         data = penguin_complete, # Couple observations to available data
+         colour = 'species', # Sum of PC 1 & 2 (x/y axes %) explains ~90% of variance among 4 variables
+         loadings = TRUE,
+         loadings.label = TRUE) +
+  theme_minimal() # Can still use ggplot themes, or in autoplot for specific loading mods
+```
+
