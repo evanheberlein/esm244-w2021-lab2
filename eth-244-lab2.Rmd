@@ -48,3 +48,77 @@ autoplot(penguin_pca,
   theme_minimal() # Can still use ggplot themes, or in autoplot for specific loading mods
 ```
 
+### Part 2: ggplot2 customization & reading in different file types
+
+#### Read in an .xlsx file & do some wrangling
+
+```{r}
+fish_noaa <- read_excel(here("data", "foss_landings.xlsx")) %>% 
+  clean_names() %>% 
+  mutate(across(where(is.character), tolower)) %>% # Apply mutate across columns that are character class to lowercase
+  mutate(nmfs_name = stringr::str_sub(nmfs_name, end = -4)) %>% # Extract/replace substrings from character vector, subtract last 4 characters, if use new col name will create new col
+  filter(confidentiality == 'public')
+```
+
+Make a customized graph:
+```{r}
+fish_plot <- ggplot(data = fish_noaa,
+                    aes(x = year, y = pounds)) +
+  geom_line(aes(color = nmfs_name), show.legend = FALSE) +
+  theme_minimal()
+
+fish_plot
+
+ggplotly(fish_plot) #Interactive graph, maintained in knitted html
+```
+
+### Use gghighlight to highlight certains series from spaghetti plot
+
+```{r}
+ggplot(data = fish_noaa,
+                    aes(x = year, y = pounds, group = nmfs_name)) +
+  geom_line() + # Need to specify series (nmfs_species) either here by color or in aes
+  theme_minimal() +
+  gghighlight(nmfs_name == "tunas") # Highlight series
+
+ggplot(data = fish_noaa, aes(x = year, y = pounds, group = nmfs_name)) +
+  geom_line(aes(colour = nmfs_name)) + # Need to specify series (nmfs_species) either here by color or in aes
+  theme_minimal() +
+  gghighlight(max(pounds) > 1e8) # Highlighted series, factored by color in geom_line (only applies to gghighlight specs)
+```
+
+#### Read in from a URL, `lubridate()`, `mutate()`, make a graph w/ months in logical order
+
+```{r}
+monroe_wt <- read_csv("https://data.bloomington.in.gov/dataset/2c81cfe3-62c2-46ed-8fcf-83c1880301d1/resource/13c8f7aa-af51-4008-80a9-56415c7c931e/download/mwtpdailyelectricitybclear.csv") %>% 
+  clean_names()
+
+monroe_ts <- monroe_wt %>% 
+  mutate(date = mdy(date)) %>% 
+  mutate(record_month = month(date)) %>% 
+  mutate(month_name = month.abb[record_month]) %>% 
+  mutate(month_name = fct_reorder(month_name, record_month)) # Convert character to factor & set values based on other variable
+
+ggplot(data = monroe_ts, aes(month_name, y = total_k_wh)) +
+  geom_jitter()
+```
+
+### Part 3: Compound figures w/ `patchwork`
+
+```{r}
+graph_a <- ggplot(data = penguins, aes(x = body_mass_g, y = flipper_length_mm)) +
+                    geom_point()
+
+graph_b <- ggplot(data = penguins, aes(x = species, y = flipper_length_mm)) +
+  geom_jitter(aes(color = species), show.legend = FALSE)
+                  
+# Use | to put graphs side by side
+# Use / to put graphs one over the other
+
+graph_c <- (graph_a | graph_b) / fish_plot & theme_dark()
+
+graph_c
+
+ggsave(here("fig", "graph_c_eth.png"), width = 5, height = 6)
+```
+
